@@ -1,17 +1,20 @@
 import pandas as pd 
 import matplotlib.pyplot as plt
 import numpy as np 
-from IMU import IMU
-from Camera import Camera
+from Robot import Robot
+
+
+
 
 
 if __name__ == "__main__":
     
-    files =["./data/IMU_static.csv","./data/IMU_dynamic.csv" ]
-    imu = IMU(files)
-    imu.calibrate()
-    camera = Camera("./data/CameraModuleCalibration.csv")
-    #camera.calibrate()
-    camera.calibrate()
-
-    # localize the robot 
+    # localize the robot
+    robot = Robot()
+    robot.calibrate()
+    print("top wall")
+    robot.localize("./data/CameraModuleLocalization1.csv")
+    
+    print("left wall")
+    robot.localize("./data/CameraModuleLocalization2.csv")
+ 
