@@ -20,13 +20,13 @@ class Map(object):
     
     def get_qr_global_coordintates_cm(self,qr_id):
         if qr_id in self.l1:
-            return [ 0, (self.qr_dimension*(self.l1.index(qr_id)+1)+ +self.qr_dimension/2 +self.l1_gap_top_down[0]) ]
+            return [ 0, (self.qr_dimension*(self.l1.index(qr_id)+1)+ +self.qr_dimension/2 +self.l1_gap_top_down[0]) , "l1"]
         elif qr_id in self.l2:
-            return [ (self.qr_dimension*(self.l2.index(qr_id))+self.qr_dimension/2 +self.l2_gap_left_right[0]), 0]
+            return [ (self.qr_dimension*(self.l2.index(qr_id))+self.qr_dimension/2 +self.l2_gap_left_right[0]), 0, "l2"]
         elif qr_id in self.l3:
-            return [self.wall_dimension,(self.qr_dimension*(self.l3.index(qr_id))+self.qr_dimension/2 +self.l3_gap_top_down[0]) ]
+            return [self.wall_dimension,(self.qr_dimension*(self.l3.index(qr_id))+self.qr_dimension/2 +self.l3_gap_top_down[0]), "l3" ]
         elif qr_id in self.l4:
-            return [ (self.qr_dimension*(self.l4.index(qr_id))+self.qr_dimension/2 +self.l4_gap_left_right[0]), self.wall_dimension]
+            return [ (self.qr_dimension*(self.l4.index(qr_id))+self.qr_dimension/2 +self.l4_gap_left_right[0]), self.wall_dimension, "l4"]
         else:
             return [0,0]
            
