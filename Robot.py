@@ -48,11 +48,23 @@ class Robot(object):
         glob_cord_2 = self.map.get_qr_global_coordintates_cm(qr_num_2)
         
         phi = (np.abs(angle_1) + np.abs(angle_2))*np.pi/180
-
+        
         #distance between two points
         dist = np.sqrt( qr_dist_1**2 + qr_dist_2**2 - 2*qr_dist_1*qr_dist_2*np.cos(phi) ) 
         
         alpha = np.arcsin( (qr_dist_2* np.sin(phi))/dist)
+        # computing the attitude of the robot using cosindering which wall is pointing
+        if wall_qr_1[2] == 'l4':
+            print("alpha ", alpha*180/np.pi)
+            attitude = np.abs(angle_1) + alpha*180/np.pi
+        elif  wall_qr_1[2] == 'l3':
+            attitude = np.abs(angle_1) + alpha*180/np.pi -90
+        elif  wall_qr_1[2] == 'l2':
+            attitude = np.abs(angle_1) + alpha*180/np.pi +270
+        elif  wall_qr_1[2] == 'l1':
+            attitude = np.abs(angle_1) + alpha*180/np.pi +180
+        
+
         #TODO detection which wall is and use the proper one
         
         # for horizontal wall 
@@ -79,7 +91,7 @@ class Robot(object):
             print("x ", x, "y", y)   
             print("phi sum ", phi, "phi sum deg ", phi*180/np.pi)
 
-        return [np.abs(x), np.abs(y)]
+        return [np.abs(x), np.abs(y), attitude]
 
 
     def get_value_qr_from_data(self, qr,camera_data):
