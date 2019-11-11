@@ -60,9 +60,9 @@ class Robot(object):
         elif  wall_qr_1[2] == 'l3':
             attitude = np.abs(angle_1) + alpha*180/np.pi -90
         elif  wall_qr_1[2] == 'l2':
-            attitude = np.abs(angle_1) + alpha*180/np.pi +270
-        elif  wall_qr_1[2] == 'l1':
             attitude = np.abs(angle_1) + alpha*180/np.pi +180
+        elif  wall_qr_1[2] == 'l1':
+            attitude = np.abs(angle_1) + alpha*180/np.pi +90
         
 
         #TODO detection which wall is and use the proper one
