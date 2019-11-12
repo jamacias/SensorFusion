@@ -22,9 +22,18 @@ class Gyroscope(object):
         self.compute_covariance()
     
     def compute_bias(self):
+        
         gyro_bias_x = np.mean(self.gyro_xyz.iloc[:,0])
         gyro_bias_y = np.mean(self.gyro_xyz.iloc[:,1])
         gyro_bias_z = np.mean(self.gyro_xyz.iloc[:,2])
+        plt.plot(self.gyro_xyz.iloc[:,0])
+        plt.plot(self.gyro_xyz.iloc[:,1])
+        plt.plot(self.gyro_xyz.iloc[:,2])
+        plt.legend(["x","y","z"])
+        plt.xlabel("Sample ")
+        plt.ylabel("Angular speed [degree/s]")
+        #plt.show()
+
         self.bias=  [gyro_bias_x, gyro_bias_y,gyro_bias_z]
         print("Gyroscope bias: ", self.bias)
 

@@ -18,6 +18,8 @@ class Map(object):
         self.l4 = [19,20,21,25,26,27,31,32,33] #from left to right
         self.l4_gap_left_right = [7.6,4.2] 
     
+    # Given a QR ID, return its measured coordinates in global frame, along with the corresponding wall identifier.
+    # The coordinates returned are centered.
     def get_qr_global_coordintates_cm(self,qr_id):
         if qr_id in self.l1:
             return [ 0, (self.qr_dimension*(self.l1.index(qr_id)+1)+ +self.qr_dimension/2 +self.l1_gap_top_down[0]) , "l1"]

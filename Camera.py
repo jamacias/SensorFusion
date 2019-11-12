@@ -23,8 +23,8 @@ class Camera(object):
     def calibrate(self):
         dist_cam_qr_cm, height_qr , x_pos = self.read_data()
         #data collected manually
-        height_qr = np.array([36.8,41.4,46.4,51.4,56.4,61.4,66.4,71.4,76.4,81.4,86.4,91.4,96.4,101.4,106.4,111.4,116.4,121.4,126.4,131.4,136.4])
-        dist_cam_qr_cm = [176,156,137,124,112,103,96,88,83,78,73,68,65,62,60,55,53,52,50,47,46]
+        dist_cam_qr_cm = np.array([36.8,41.4,46.4,51.4,56.4,61.4,66.4,71.4,76.4,81.4,86.4,91.4,96.4,101.4,106.4,111.4,116.4,121.4,126.4,131.4,136.4])
+        height_qr = np.array([176,156,137,124,112,103,96,88,83,78,73,68,65,62,60,55,53,52,50,47,46])
 
 
         # least square error for fitting line
@@ -41,6 +41,8 @@ class Camera(object):
         #plt.legend()    
         #plt.plot(1/height_qr, dist_cam_qr_cm,'.')
         #plt.show()
+    def get_angle(self, qr_x):
+        return (np.arctan2(qr_x,self.focal_lenght)*180/np.pi) 
 
     def get_angle(self, qr_x, qr_num):
         return [(np.arctan2(qr_x,self.focal_lenght)*180/np.pi) , qr_num]

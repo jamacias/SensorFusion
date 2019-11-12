@@ -6,7 +6,8 @@ from IMU import IMU
 from Camera import Camera
 from Map import Map
 
-from collections import Counter
+from scipy.optimize import least_squares
+from scipy.optimize import minimize
 
 
 class Robot(object):
@@ -15,11 +16,15 @@ class Robot(object):
         self.imu = IMU(self.calibration_files[:-1])
         self.camera = Camera(self.calibration_files[2])
         self.map = Map()
+        self.camera_data = []
+        self.qr_detected = []
     
     def calibrate(self):
         self.imu.calibrate()
         self.camera.calibrate()
     
+    # Given two QR IDs, return the estimated position of the robot.
+    # This is purely a geometric approximation using cosine similarities.
     def _localize_one_point(self, qr_1, qr_2, camera_data):
         _debug = False
 
@@ -34,12 +39,12 @@ class Robot(object):
             if wall_qr_1[0]>wall_qr_2[0]:
                 qr_1, qr_2 = qr_2, qr_1 
         
-
+        #print("qr_1 ", qr_1, " qr_2 " , qr_2)
         #first point data from data 
-        qr_x_center_1, qr_num_1, qr_dist_1 =  self.get_value_qr_from_data(qr_1, camera_data)
+        qr_x_center_1, qr_num_1, qr_dist_1 =  self.get_value_qr_from_data(qr_1)
 
         #second point needed for localization     
-        qr_x_center_2, qr_num_2, qr_dist_2 =  self.get_value_qr_from_data(qr_2, camera_data)
+        qr_x_center_2, qr_num_2, qr_dist_2 =  self.get_value_qr_from_data(qr_2)
      
 
         angle_1 , _ = self.camera.get_angle(qr_x_center_1, qr_num_1 )
@@ -47,16 +52,25 @@ class Robot(object):
         angle_2, _  =  self.camera.get_angle(qr_x_center_2, qr_num_2 )
         glob_cord_2 = self.map.get_qr_global_coordintates_cm(qr_num_2)
         
-        phi = (np.abs(angle_1) + np.abs(angle_2))*np.pi/180
-        
+        if angle_1*angle_2 > 0:
+            phi = np.abs((np.abs(angle_1) - np.abs(angle_2)))*np.pi/180 # angle here TODO fix a bug when angle same sign
+        else :
+            phi = np.abs((np.abs(angle_1) + np.abs(angle_2)))*np.pi/180
         #distance between two points
         dist = np.sqrt( qr_dist_1**2 + qr_dist_2**2 - 2*qr_dist_1*qr_dist_2*np.cos(phi) ) 
+         
+        """ print("dist B", dist)
+        if glob_cord_1 == 'l3' or glob_cord_1 == 'l1':
+            dist= np.abs(glob_cord_1[1] - glob_cord_2[1])
+        else :
+            dist= np.abs(glob_cord_1[0] - glob_cord_2[0])
+        print("dist", dist) """
         
         alpha = np.arcsin( (qr_dist_2* np.sin(phi))/dist)
+
         # computing the attitude of the robot using cosindering which wall is pointing
         if wall_qr_1[2] == 'l4':
-            print("alpha ", alpha*180/np.pi)
-            attitude = np.abs(angle_1) + alpha*180/np.pi
+             attitude = np.abs(angle_1) + alpha*180/np.pi
         elif  wall_qr_1[2] == 'l3':
             attitude = np.abs(angle_1) + alpha*180/np.pi -90
         elif  wall_qr_1[2] == 'l2':
@@ -64,8 +78,6 @@ class Robot(object):
         elif  wall_qr_1[2] == 'l1':
             attitude = np.abs(angle_1) + alpha*180/np.pi +90
         
-
-        #TODO detection which wall is and use the proper one
         
         # for horizontal wall 
         if glob_cord_1[2] == 'l2' or  glob_cord_1[2] == 'l4':
@@ -94,28 +106,67 @@ class Robot(object):
         return [np.abs(x), np.abs(y), attitude]
 
 
-    def get_value_qr_from_data(self, qr,camera_data):
+    # Given a QR ID, return the centre, the number and the distance
+    def get_value_qr_from_data(self, qr):
         index_qr=0
-        while camera_data.iloc[index_qr,1] == qr:
+        while self.camera_data.iloc[index_qr,1] != qr:
+            #print("camera_data.iloc[index_qr,1] ", camera_data.iloc[index_qr,1], " ,qr, ", qr)
             index_qr +=1
+            
         
-        qr_x_center = camera_data.iloc[index_qr,2]
-        qr_num = camera_data.iloc[index_qr,1]
-        qr_dist =  self.camera.get_distance(camera_data.iloc[index_qr,5])
+        qr_x_center = self.camera_data.iloc[index_qr,2]
+        qr_num = self.camera_data.iloc[index_qr,1]
+        qr_dist =  self.camera.get_distance(self.camera_data.iloc[index_qr,5])
 
         return qr_x_center, qr_num, qr_dist 
 
+    #return the euclidean distance between the two points
+    def euclidean_dist(self, coord_qr, coord_robot):
+        return np.sqrt( (coord_qr[0]-coord_robot[0])**2 + (coord_qr[1]-coord_robot[1])**2  )
+    
+    # get the vector y of measurement
+    def get_measurement(self,qr_height):
+        return self.camera.get_distance(qr_height)
+    
+
+    # computing the loss function by passing the initial guess first
+    def loss(self, coord_robot):
+        loss = []
+        for qr in self.qr_detected:
+            coord_qr = self.map.get_qr_global_coordintates_cm(qr) # Get the global coordinates of QR code qr
+            qr_x_center , _,  qr_dist = self.get_value_qr_from_data(qr) # Obtain the measurement of pixel distance to the centre and distance to the QR code from the sensors
+            phi_measured = self.camera.get_angle(qr_x_center, qr)[0] # Compute the Phi from measured parameters
+            
+            # Compute the losses:
+            # Vector of d_i and phi_i stacked that is to be minimized wrt [x_r, y_r, theta_r]
+            phi_expression = np.arctan2( (coord_qr[1]-coord_robot[1]),   (coord_qr[0]-coord_robot[0]) ) - coord_robot[2]
+            l_distance = qr_dist  -  self.euclidean_dist(coord_qr, coord_robot)
+            l_angle = phi_measured - phi_expression # phi expression contains the three minimization variables
+            loss.append(l_distance)
+            loss.append(l_angle)
+
+        loss = np.array(loss[:])
+
+        # Return the scalar (loss)
+        return np.dot(loss.T, loss)
 
     def localize(self,file):
         print("--------------LOCALIZATION")
-        camera_data = pd.read_csv(file)
-        # number of Qr detecter
-        qr_detected = list(set(camera_data.iloc[:, 1]))
+        self.camera_data = pd.read_csv(file)
+        # Identify the QR codes that are detected and store them in a list.
+        self.qr_detected = list(set(self.camera_data.iloc[:, 1])) 
         positions = []
-        for k in range(len(qr_detected)-1):
-            positions.append(self._localize_one_point(qr_detected[k], qr_detected[k+1], camera_data))
-        positions = np.array(positions)
-        print(positions)
-        print(np.mean(positions , axis=0))
+        # Make a first estimation using geometric relations for all the detected QR codes 
+        for k in range(len(self.qr_detected)-1):
+            #print("qr_detected[k] ",qr_detected[k], "qr_detected[k+1] ",qr_detected[k+1])
+            # Set of localization using two QR codes at a time.
+            positions.append(self._localize_one_point(self.qr_detected[k], self.qr_detected[k+1], self.camera_data))
+    
+        # The mean of all the localizations using two QR codes will be the initial guess of the minimization algorithm
+        robo_ini_guess = np.mean(positions , axis=0)
+        print("initial_guess ", robo_ini_guess)
+        res = minimize(self.loss, robo_ini_guess, method='BFGS',options={ 'xtol': 1e-8,'disp': True})
+        #print(res)
+        print("minimized version ", res.x)
 
         return 0
