@@ -70,13 +70,13 @@ class Robot(object):
 
         # computing the attitude of the robot using cosindering which wall is pointing
         if wall_qr_1[2] == 'l4':
-             attitude = np.abs(angle_1) + alpha*180/np.pi
+             attitude = np.abs(angle_1) + alpha*180/np.pi -90
         elif  wall_qr_1[2] == 'l3':
-            attitude = np.abs(angle_1) + alpha*180/np.pi -90
-        elif  wall_qr_1[2] == 'l2':
             attitude = np.abs(angle_1) + alpha*180/np.pi +180
-        elif  wall_qr_1[2] == 'l1':
+        elif  wall_qr_1[2] == 'l2':
             attitude = np.abs(angle_1) + alpha*180/np.pi +90
+        elif  wall_qr_1[2] == 'l1':
+            attitude = np.abs(angle_1) + alpha*180/np.pi 
         
         
         # for horizontal wall 
@@ -102,8 +102,8 @@ class Robot(object):
     
             print("x ", x, "y", y)   
             print("phi sum ", phi, "phi sum deg ", phi*180/np.pi)
-
-        return [np.abs(x), np.abs(y), attitude]
+        # conversion of the attitude in radiants
+        return [np.abs(x), np.abs(y), attitude*(np.pi/180)]
 
 
     # Given a QR ID, return the centre, the number and the distance
@@ -135,7 +135,7 @@ class Robot(object):
         for qr in self.qr_detected:
             coord_qr = self.map.get_qr_global_coordintates_cm(qr) # Get the global coordinates of QR code qr
             qr_x_center , _,  qr_dist = self.get_value_qr_from_data(qr) # Obtain the measurement of pixel distance to the centre and distance to the QR code from the sensors
-            phi_measured = self.camera.get_angle(qr_x_center, qr)[0] # Compute the Phi from measured parameters
+            phi_measured = self.camera.get_angle(qr_x_center, qr)[0]*(np.pi/180) # Compute the Phi from measured parameters (switch to radiants)
             
             # Compute the losses:
             # Vector of d_i and phi_i stacked that is to be minimized wrt [x_r, y_r, theta_r]
