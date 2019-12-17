@@ -27,13 +27,14 @@ class Accelerometer(object):
 
     def compute_bias_and_gain(self):
         # plot to see the data of the accelerometer
-        plt.plot(self.acc_xyz.iloc[:,0])
+        """ plt.plot(self.acc_xyz.iloc[:,0])
         plt.plot(self.acc_xyz.iloc[:,1])
         plt.plot(self.acc_xyz.iloc[:,2])
         plt.legend(["x","y", "z"])
         plt.xlabel("Sample ")
         plt.ylabel("Linear acceleration [g]")
-        #plt.show()
+        plt.show()
+        """
         x_u, x_d = self.find_value_of_interest(self.acc_xyz.iloc[:,0]) # values up and down for x 
         y_u, y_d = self.find_value_of_interest(self.acc_xyz.iloc[:,1]) # values up and down for x 
         z_u, z_d = self.find_value_of_interest(self.acc_xyz.iloc[:,2]) # values up and down for x 
@@ -41,10 +42,10 @@ class Accelerometer(object):
         self.bias = [(x_u+x_d)/2,(y_u+y_d)/2,(z_u+z_d)/2 ]
         self.gain = [(x_u-x_d)/(2*self.g),(y_u-y_d)/(2*self.g),(z_u-z_d)/(2*self.g)] 
 
-        print(self.bias)
-        print(self.gain)
+        print("Accelerometer bias  ", self.bias)
+        print("Accelerometer gain ", self.gain)
 
     def calibrate(self):
         self.read_data(self.file)
         self.compute_bias_and_gain()
-        
+    

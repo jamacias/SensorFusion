@@ -12,6 +12,8 @@ if __name__ == "__main__":
     # localize the robot
     robot = Robot()
     robot.calibrate()
+
+    
     print("top wall -----------")
     robot.localize("./data/CameraModuleLocalization1.csv")
     

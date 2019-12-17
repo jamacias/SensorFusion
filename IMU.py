@@ -13,4 +13,7 @@ class IMU(object):
     def calibrate(self):
         self.gyroscope.calibrate()
         self.accelerometer.calibrate()
+
+    def set_navigation_file(self,file):
+        self.gyroscope.set_navigation_file(file)
         

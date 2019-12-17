@@ -18,6 +18,16 @@ class Robot(object):
         self.map = Map()
         self.camera_data = []
         self.qr_detected = []
+
+        # state of the robot
+        # constant velocity of the robot
+        self.v = 6.68 # cm/s SUPER DRAFT ESTIMATION  
+        self.delta_t = 0.05
+        
+        self.x = 0,
+        self.y = 0, 
+        self.phi = 0
+        
     
     def calibrate(self):
         self.imu.calibrate()
@@ -170,3 +180,22 @@ class Robot(object):
         print("minimized version ", res.x)
 
         return 0
+
+    
+    def navigation_file(self, imu_navigation_file):
+        self.imu.set_navigation_file(imu_navigation_file)
+
+    # inizialization function useful for setting the initial state at the beginning
+    def initialize_state(self,_x, _y,_phi):
+        self.x = _x
+        self.y = _y 
+        self.phi = _phi
+
+    # given the previous observation return the state given the dynamic model
+    def dynamic_model(self,_x,_y,_phi):
+        #considering the velocity always stable, suggested in the lab boook
+        # list with the parameter of the robot at state n 
+        phi_rad = _phi * np.pi/180.0
+        self.x  = _x + (self.delta_t*self.v*np.cos(phi_rad)) + 0 # TODO zero is the noise not realistic at all  
+        self.y  = _y + (self.delta_t*self.v*np.sin(phi_rad)) + 0
+        return self.x, self.y, _phi
