@@ -49,8 +49,10 @@ class Gyroscope(object):
         self.navigation_gyro_xyz = imu_data.iloc[:,6:9]
 
     def get_measurement(self):
-        #measurement -> [x,y,z] degrees/s at each step
-        measurement = [self.navigation_gyro_xyz.iloc[self.step,0],self.navigation_gyro_xyz.iloc[self.step,1],self.navigation_gyro_xyz.iloc[self.step,2]]
+        #measurement -> [x,y,z] degrees/s at each step return the measurement of the gyro, summing the bias and increase the step of 1 so the next
+        # time the next value  of the file will be returned
+        # TODO understand how to handle the variance correctly
+        measurement = [self.navigation_gyro_xyz.iloc[self.step,0]+self.bias[0],self.navigation_gyro_xyz.iloc[self.step,1]+self.bias[1],self.navigation_gyro_xyz.iloc[self.step,2]+self.bias[2]]
         self.step +=1
         return measurement
 

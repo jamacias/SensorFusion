@@ -22,8 +22,10 @@ class Robot(object):
         # state of the robot
         # constant velocity of the robot
         self.v = 6.68 # cm/s SUPER DRAFT ESTIMATION  
-        self.delta_t = 0.05
+        self.delta_t = 0.05 # delta t of 0,05s used in quasi constant turning model 
         
+
+        # position and angle of the robot 
         self.x = 0,
         self.y = 0, 
         self.phi = 0
@@ -181,7 +183,7 @@ class Robot(object):
 
         return 0
 
-    
+    # passing the navigation file to the various component for the time being only imu later also camera file
     def navigation_file(self, imu_navigation_file):
         self.imu.set_navigation_file(imu_navigation_file)
 
