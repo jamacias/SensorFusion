@@ -53,3 +53,10 @@ class Camera(object):
     def localize(self):
         camera_localization = pd.read_csv("./data/CameraModuleLocalization1.csv")
         print(camera_localization)
+
+    def set_navigation_file(self, file):
+        self.camera_navigation_file = pd.read_csv(self.file)
+        
+
+    
+        

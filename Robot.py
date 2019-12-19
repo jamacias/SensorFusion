@@ -117,7 +117,92 @@ class Robot(object):
         # conversion of the attitude in radiants
         return [np.abs(x), np.abs(y), attitude*(np.pi/180)]
 
+    def get_value_qr_from_data_navigation(self, qr,camera_data):
+        index_qr=0
+        while camera_data.iloc[index_qr,1] != qr:
+            #print("camera_data.iloc[index_qr,1] ", camera_data.iloc[index_qr,1], " ,qr, ", qr)
+            index_qr +=1
+            
+        
+        qr_x_center = camera_data.iloc[index_qr,2]
+        qr_num = camera_data.iloc[index_qr,1]
+        qr_dist =  self.camera.get_distance(camera_data.iloc[index_qr,5])
 
+        return qr_x_center, qr_num, qr_dist 
+
+    def localize_one_point_navigation(self, qr_1, qr_2, camera_data):
+        _debug = False
+
+        wall_qr_1 = self.map.get_qr_global_coordintates_cm(qr_1)
+        wall_qr_2 = self.map.get_qr_global_coordintates_cm(qr_2)
+        if wall_qr_1[2] != wall_qr_2[2]:
+            return [-1,-1]
+        elif wall_qr_1[2] == 'l1' or  wall_qr_1[2] == 'l3':
+            if wall_qr_1[1]>wall_qr_2[1]:
+                qr_1, qr_2 = qr_2, qr_1 
+        elif wall_qr_1[2] == 'l2' or  wall_qr_1[2] == 'l4':
+            if wall_qr_1[0]>wall_qr_2[0]:
+                qr_1, qr_2 = qr_2, qr_1 
+        
+        #print("qr_1 ", qr_1, " qr_2 " , qr_2)
+        #first point data from data 
+        
+        qr_x_center_1, qr_num_1, qr_dist_1 =  self.get_value_qr_from_data_navigation(qr_1,camera_data)
+
+        #second point needed for localization     
+        qr_x_center_2, qr_num_2, qr_dist_2 =  self.get_value_qr_from_data_navigation(qr_2,camera_data)
+     
+
+        angle_1 , _ = self.camera.get_angle(qr_x_center_1, qr_num_1 )
+        glob_cord_1 = self.map.get_qr_global_coordintates_cm(qr_num_1)
+        angle_2, _  =  self.camera.get_angle(qr_x_center_2, qr_num_2 )
+        glob_cord_2 = self.map.get_qr_global_coordintates_cm(qr_num_2)
+        
+        if angle_1*angle_2 > 0:
+            phi = np.abs((np.abs(angle_1) - np.abs(angle_2)))*np.pi/180 # angle here TODO fix a bug when angle same sign
+        else :
+            phi = np.abs((np.abs(angle_1) + np.abs(angle_2)))*np.pi/180
+        #distance between two points
+        dist = np.sqrt( qr_dist_1**2 + qr_dist_2**2 - 2*qr_dist_1*qr_dist_2*np.cos(phi) ) 
+        
+        alpha = np.arcsin( (qr_dist_2* np.sin(phi))/dist)
+
+        # computing the attitude of the robot using cosindering which wall is pointing
+        if wall_qr_1[2] == 'l4':
+             attitude = np.abs(angle_1) + alpha*180/np.pi -90
+        elif  wall_qr_1[2] == 'l3':
+            attitude = np.abs(angle_1) + alpha*180/np.pi +180
+        elif  wall_qr_1[2] == 'l2':
+            attitude = np.abs(angle_1) + alpha*180/np.pi +90
+        elif  wall_qr_1[2] == 'l1':
+            attitude = np.abs(angle_1) + alpha*180/np.pi 
+        
+        
+        # for horizontal wall 
+        if glob_cord_1[2] == 'l2' or  glob_cord_1[2] == 'l4':
+             # for horizontal wall 
+            x = (np.cos(alpha)*qr_dist_1) + glob_cord_1[0]
+            y = (np.sin(alpha)*qr_dist_1) - glob_cord_1[1]
+        else:
+            # fine for vertical wall
+            x = (np.sin(alpha)*qr_dist_1) - glob_cord_1[0] 
+            y = (np.cos(alpha)*qr_dist_1) + glob_cord_1[1]     
+
+        if _debug:
+            print(camera_data)            
+            print("cord_1 ", glob_cord_1 )
+            print("dist_1 ",qr_dist_1, ", dits_1**2 ",qr_dist_1**2 )
+            print("cord_2 ", glob_cord_2)
+            print("dist_2 ",qr_dist_2, ", dits_2**2 ",qr_dist_2**2 )
+            print("dist between two qr", dist)
+            print("sin alpha : ", (qr_dist_1* np.sin(phi))/dist)
+            print("alpha :", alpha, " alpha_deg : ", alpha*180/np.pi)
+            print(" np.sin(alpha)*qr_dist_2 ", np.sin(alpha)*qr_dist_2, " glob_cord_2[1] : ",  glob_cord_2[1])
+    
+            print("x ", x, "y", y)   
+            print("phi sum ", phi, "phi sum deg ", phi*180/np.pi)
+        
+        return [np.abs(x), np.abs(y), attitude-270]
     # Given a QR ID, return the centre, the number and the distance
     def get_value_qr_from_data(self, qr):
         index_qr=0
@@ -183,9 +268,58 @@ class Robot(object):
 
         return 0
 
+        # computing the loss function by passing the initial guess first
+    def navigation_loss(self, coord_robot):
+        loss = []
+        for _,qr_data in self.current_data.iterrows():
+           
+            coord_qr = self.map.get_qr_global_coordintates_cm(qr_data.iloc[1]) # Get the global coordinates of QR code qr
+            qr_x_center = qr_data.iloc[2]
+            qr_dist = self.camera.get_distance(qr_data.iloc[5]) # Obtain the measurement of pixel distance to the centre and distance to the QR code from the sensors
+            #phi_measured = self.camera.get_angle(qr_x_center, qr_data.iloc[1])[0]*(np.pi/180) # Compute the Phi from measured parameters (switch to radiants)
+            
+            # Compute the losses:
+            # Vector of d_i and phi_i stacked that is to be minimized wrt [x_r, y_r, theta_r]
+            #phi_expression = np.arctan2( (coord_qr[1]-coord_robot[1]),   (coord_qr[0]-coord_robot[0]) ) - coord_robot[2]
+            l_distance = qr_dist  -  self.euclidean_dist(coord_qr, coord_robot)
+            #l_angle = phi_measured - phi_expression # phi expression contains the three minimization variables
+            loss.append(l_distance)
+            #loss.append(l_angle)
+
+        loss = np.array(loss[:])
+
+        # Return the scalar (loss)
+        return np.dot(loss.T, loss)    
+
+    def get_camera_coordinate(self, timestep):
+        prev_timestep = timestep - 0.05
+        # return the array of measurement  
+        data = self.camera_navigation
+        self.current_data = data.loc[(data.iloc[:,0] >= prev_timestep) &  (data.iloc[:,0]<= timestep) ]
+        self.qr_detected = self.current_data.iloc[:,1]
+        res  =[]
+        if self.qr_detected.shape[0] > 1: 
+            positions = []
+            for k in range(self.current_data.shape[0]-1):
+                positions.append(self.localize_one_point_navigation(self.current_data.iloc[k,1], self.current_data.iloc[k+1,1], self.current_data))
+            
+            try:
+                robo_ini_guess = np.mean(positions , axis=0)
+            except:
+                return []
+        
+            res = minimize(self.navigation_loss , robo_ini_guess, method='BFGS',options={ 'xtol': 1e-8,'disp': True})
+            res = res.x
+            if len(res) !=3:
+                res = np.concatenate((res , [0]))   
+            print("camera result : ", res)
+        return res        
+
     # passing the navigation file to the various component for the time being only imu later also camera file
-    def navigation_file(self, imu_navigation_file):
+    def navigation_file(self, imu_navigation_file, camera_navigation_file):
         self.imu.set_navigation_file(imu_navigation_file)
+        
+        self.camera_navigation = pd.read_csv("data/CameraModuleNavigation.csv")
 
     # inizialization function useful for setting the initial state at the beginning
     def initialize_state(self,_x, _y,_phi):
